@@ -20,10 +20,13 @@ bedtools
 	samtools faidx ucsc.hg19.fa (that produces ucsc.hg19.fa.fai)
 	cut -f1,2  ucsc.hg19.fa.fai > ucsc.hg19.genomefile
 - the target BED file for your sequenced samples
-- a file with a list of BAM full paths to use and corresponding samplenames (tab separated bamlist.txt). Its header must be: samplename\tpath
+- a file with a list of BAM full paths to use and corresponding samplenames (tab separated bamlist.txt). E.g.:
+
+``
 	samplename	path
 	sampleA	/path/to/bam/
 	sampleB	/path/to/bam/
+``
 
 **Step 1: Get the exons on-target (to be run only once per-target)**
 
