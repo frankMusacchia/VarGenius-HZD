@@ -1,4 +1,4 @@
-**VarGenius-HZD**
+# VarGenius-HZD
 
 Rare homozygous/hemizygous deletions caller within a set of BAM files
 
@@ -22,11 +22,13 @@ bedtools
 - the target BED file for your sequenced samples
 - a file with a list of BAM full paths to use and corresponding samplenames (tab separated bamlist.txt). E.g.:
 
-``
-	samplename	path
-	sampleA	/path/to/bam/
-	sampleB	/path/to/bam/
-``
+```
+
+samplename	path
+sampleA	/path/to/bam/
+sampleB	/path/to/bam/
+
+```
 
 **Step 1: Get the exons on-target (to be run only once per-target)**
 
