@@ -1,6 +1,7 @@
 VarGenius-HZD
 
-Calls rare homozygous/hemizygous deletions within a set of BAM files
+Rare homozygous/hemizygous deletions caller within a set of BAM files
+
 ----------------------------------------
 
 Needed programs
