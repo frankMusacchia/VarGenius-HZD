@@ -20,7 +20,8 @@ bedtools
 	samtools faidx ucsc.hg19.fa (that produces ucsc.hg19.fa.fai)
 	cut -f1,2  ucsc.hg19.fa.fai > ucsc.hg19.genomefile
 - the target BED file for your sequenced samples
-- a file with a list of BAM full paths to use and corresponding samplenames (tab separated bamlist.txt). E.g.:
+- a file with a list of sample names and paths to the BAM files tab separated (bamlist.txt). 
+  E.g.:
 
 ```
 
