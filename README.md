@@ -1,4 +1,4 @@
-VarGenius-HZD
+**VarGenius-HZD**
 
 Rare homozygous/hemizygous deletions caller within a set of BAM files
 
