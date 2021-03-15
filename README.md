@@ -4,8 +4,7 @@ Rare homozygous/hemizygous deletions caller within a set of BAM files
 
 ----------------------------------------
 
-Needed programs
-
+**Dependencies**
 R
 
 PERL (Needed libraries: Parallel::ForkManager; Getopt::Long
@@ -13,7 +12,7 @@ PERL (Needed libraries: Parallel::ForkManager; Getopt::Long
 bedtools
 
 
-Input to prepare
+**Input to prepare**
 
 - genome in FASTA format that you used for the alignment
 - the genome file for your genome. You can produce it with:
