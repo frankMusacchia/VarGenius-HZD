@@ -18,15 +18,15 @@ Input to prepare
 	sampleA	/path/to/bam/
 	sampleB	/path/to/bam/
 
-#Step 1: Get the exons on-target (to be run only once per-target)
+**Step 1: Get the exons on-target (to be run only once per-target)**
 
 perl HZD_launch.pl -p /path/where/you/downloaded/VarGenius-HZD -o /path/to/outfolder/ -ref /path/to/genome.fasta -b //path/to/bedtools -l /path/to/bamlist.txt -f GET\_EXONS\_ON\_TARGET -t /path/to/target.bed
 
-#Step 2: Execute the breadth/depth of coverage step for each sample
+**Step 2: Execute the breadth/depth of coverage step for each sample**
 
 perl HZD_launch.pl -p /path/where/you/downloaded/VarGenius-HZD -o /path/to/outfolder/ -ref /path/to/genome.fasta -b //path/to/bedtools -l /path/to/bamlist.txt -f HZD\_PREPROCESSING -t /path/to/target.bed
 
-#Step 3. Launch HZD algorithm
+**#tep 3. Launch HZD algorithm**
 
 perl HZD_launch.pl -p /path/where/you/downloaded/VarGenius-HZD -o /path/to/outfolder/ -ref /path/to/genome.fasta -b //path/to/bedtools -l /path/to/bamlist.txt -f DETECT\_HDs -t /path/to/target.bed
 
