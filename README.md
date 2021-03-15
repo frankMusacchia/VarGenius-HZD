@@ -19,6 +19,7 @@ Input to prepare
 	sampleB	/path/to/bam/
 
 #Step 1: Get the exons on-target (to be run only once per-target)
+
 perl HZD_launch.pl -p /path/where/you/downloaded/VarGenius-HZD -o /path/to/outfolder/ -ref /path/to/genome.fasta -b //path/to/bedtools -l /path/to/bamlist.txt -f GET\_EXONS\_ON\_TARGET -t /path/to/target.bed
 
 #Step 2: Execute the breadth/depth of coverage step for each sample
