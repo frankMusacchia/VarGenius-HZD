@@ -5,6 +5,7 @@ Rare homozygous/hemizygous deletions caller within a set of BAM files
 ----------------------------------------
 
 **Dependencies**
+
 R
 
 PERL (Needed libraries: Parallel::ForkManager; Getopt::Long
