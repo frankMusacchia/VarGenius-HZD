@@ -12,6 +12,7 @@ PERL (Needed libraries: Parallel::ForkManager; Getopt::Long
 
 bedtools
 
+samtools 
 
 **Input to prepare**
 
@@ -71,7 +72,6 @@ samplename: (self-explained)
 pBoC: sample Breadth-of-coverage
 
 pDoC: sample Depth-of-coverage
-
 fDoC: father Depth-of-coverage (only in VarGenius)
 
 mDoC: mather Depth-of-coverage (only in VarGenius)
@@ -81,6 +81,7 @@ avgDoC: average Depth-of-coverage across samples
 cnv_type: type of CNV
 
 gene: UCSC gene symbol
+
 
 
 
@@ -115,6 +116,7 @@ samtools index sample_deleted_sort.bam.
 5. Now that you have the samples with the synthetic deletion you can run *VarGenius-HZD*. 
 
 	5a. Generate the exons on target file:
+	
 	perl /path/where/you/downloaded/VarGenius-HZD/HZD\_launch.pl -f GET\_EXONS\_ON\_TARGET -p /folder/where/you/downloaded/thistool/ -o /path/to/outfolder/ -ref /path/to/hg19.fa -b /path/to/bedtools -l /path/to/bamlist.txt  -t /path/to/20120518.analysis_exome_targets.consensus.annotation.bed --nochr
 
 	For this test we will remove the *chr* prefix of chromosome names as in the 1KGP BAM files this is not present.
@@ -130,8 +132,8 @@ samtools index sample_deleted_sort.bam.
 	perl /path/where/you/downloaded/VarGenius-HZD/HZD_launch.pl -f DETECT\_HDs -p /folder/where/you/downloaded/thistool/ -o /path/to/outfolder/ -ref /path/to/hg19.fa -b //path/to/bedtools -l /path/to/bamlist.txt  -t /path/to/20120518.analysis_exome_targets.consensus.annotation.bed -m 2
 
 
-	5d. Filter the HDs from the output selecting only the "deleted" samples and average DoC>50.
+	5d. Filter the HDs from the output selecting only the "deleted" samples and average DoC>50:
+	
 	grep 'deleted' /path/to/outfolder/20120518.analysis_exome_targets.consensus_20120518.analysis_exome_targets.consensus_VG-HZD_final_suspect_table_gene.txt | awk '$7>50'
 	
-
 
