@@ -15,12 +15,14 @@
 
 #You should have received a copy of the GNU General Public License
 #along with this program.  If not, see <http://www.gnu.org/licenses/>.
-    
-    
+
+
+
 use strict;
 use warnings;
 use Getopt::Long;
 use Parallel::ForkManager;#For parallel executions
+use File::Copy;#To manage files
 
 my $parallelism = "threads";
 
@@ -38,10 +40,21 @@ my $target_bed = "";
 my $hum_ref = ""; 
 #Path to bedtools
 my $bedtools_path = "";# 
+my $samtools_path = "";
 my $coverbed_prog = "coverage";
 my $sortbed_prog = "sort";
 my $intersectbed_prog = "intersect";
-	
+
+#max_samples_with_lowcov
+my $max_lowBoC = "";
+
+#If the BAM files do not contain the "chr"
+my $nochr ="";
+
+#The genome file provided in input
+my $genomefile = "";
+
+
 #Get input parameters
 parse_command_line_args();
 
@@ -60,9 +73,19 @@ if (file_not_present($target_bed) ){ die "Cannot proceed Check: $target_bed.\n";
 if (! (-d $out_folder) ){
 	die "ERROR: $out_folder does not exist. Please use --out_folder\n";
 }
-		
-if ($function eq 'GET_TARGET_EXONS'){
-	my $log_file = $out_folder."/".$function.".log";
+
+my $log_file = $out_folder."/".$function.".log";
+
+#Check for bedtools
+if (! (-e $bedtools_path) ){
+	die "ERROR: bedtools path was not provided. Please use --bedtools\n";
+}
+
+
+##STEP 1
+##The target BED file will be used with UCSC exons to select only exons on target.
+if ($function eq 'GET_EXONS_ON_TARGET'){
+	
 
 	if ( !(-e $target_exons) or (-z $target_exons) ){
 		print_and_log( "Getting the exons on the target...",$log_file);#DEBUGCODE
@@ -79,34 +102,61 @@ if ($function eq 'GET_TARGET_EXONS'){
 		
 		#Get only the chrom and interval, sort and get uniq
 		print_and_log( "Get only the chrom and interval, sort and get unique lines...",$log_file);#DEBUGCODE
-		my $command =	"  cut -f1-3 $target_exons.temp | sort -k1,1 -k2,2n | uniq > $target_exons.temp2";
+		my $command = " cut -f1-3 $target_exons.temp | sort -k1,1V -k2,2n | uniq > $target_exons.temp2";
 		print_and_log( "\nExecuting command: $command\n",$log_file);#DEBUGCODE
 		try_exec_command($command) or die "Unable to execute command: $command\n";		
 		
 		#Sort using bedtools and a reference chromosome order
-		my $chr_order_f = "chr_order.txt";
-		my $sortparams = " -faidx $main_data_folder/$chr_order_f ";
-		run_BEDTOOLS_sortBed("$target_exons.temp2",$sortparams,"$target_exons.temp3",$log_file);
+		#my $chr_order_f = "chr_order.txt";
+		#my $sortparams = " -faidx $main_data_folder/$chr_order_f ";
+		#run_BEDTOOLS_sortBed("$target_exons.temp2",$sortparams,"$target_exons.temp3",$log_file);
 		
-		#Removing "chr" from target exons since the BAM files at the CNAG contain 1 instead of chr1
-		print_and_log( "Removing chr...",$log_file);#DEBUGCODE
-		$command =	"  sed 's/chr//'  $target_exons.temp3 > $target_exons";
-		print_and_log( "\nExecuting command: $command\n",$log_file);#DEBUGCODE
-		try_exec_command($command) or die "Unable to execute command: $command\n";		
+		#Removing "chr" from target exons since the BAM files contain 1 instead of chr1
+		if ($nochr){
+			print_and_log( "Removing chr...",$log_file);#DEBUGCODE
+			#$command = "  sed 's/chr//'  $target_exons.temp3 > $target_exons";
+			$command = "  sed 's/chr//'  $target_exons.temp2 > $target_exons";	
+			print_and_log( "\nExecuting command: $command\n",$log_file);#DEBUGCODE
+			try_exec_command($command) or die "Unable to execute command: $command\n";	
+		}else{
+			move("$target_exons.temp2",$target_exons);
+		}
+		
+	
 			
 		#if (  $remove_temp eq 'YES' ){
 			delete_file("$target_exons.temp");
 			delete_file("$target_exons.temp2");
 			delete_file("$target_exons.temp3");
 		#}			
-	}else{print "Cool! $target_exons already present!\n";}	
+	}else{print "Cool! $target_exons already present! Go ahead with VarGenius-HZD!\n";}	
 }
-		
-if ($function eq 'VGII_COV_STEP'){
 
+#STEP 2
+#A Genome file is generated if not provided for bedtools and for each sample in bam_list.txt
+#will be executed bedtools coverage to obtain BoC and DoC for exons_on_target
+if ($function eq 'HZD_PREPROCESSING'){
+
+#Check for samtools
+if (! (-e $samtools_path) ){
+	die "ERROR: samtools path was not provided. Please use --samtools\n";
+}
+
+	#If the genomefile is not provided generate one per-default. This works for ucsc.hg19 and 1KGP BAM files
+	if ( file_not_present($genomefile) ){ 
+		$genomefile = extract_name($hum_ref,"noext").".genomefile";
+		print "You did not provide a genome file in input. One by default wil be used\n";
+		if ( file_not_present($genomefile) ){
+		print "$genomefile not present... generating it: ";
+		my $command = " $samtools_path faidx $hum_ref; cut -f1,2 $hum_ref.fai | sort -k1,1V | grep -v '^Un' | grep -v 'random' |grep -v 'hap' ".
+			" | sed 's/chr//' > $genomefile";
+		print_and_log( "\nExecuting command: $command\n",$log_file);#DEBUGCODE
+		try_exec_command($command) or die "Unable to execute command: $command\n";	
+		}
+
+	}
 
 	my $log_file = $main_data_folder."/$program_name.log";
-	my $task = "align";
 
 	#This analysis is performed for each sample, hence the first operation is to get the samples list 
 	open (FILE,"<$bam_list") or die "Cannot open $bam_list\n";
@@ -124,9 +174,9 @@ if ($function eq 'VGII_COV_STEP'){
 			my $samplename = $pieces[0];
 			my $bam_path = $pieces[1];
 			
-			my 	$program_call = "perl $program_folder/VarGeniusII-HZD/get_nc_exons.pl".
+			my 	$program_call = "perl $program_folder/VarGenius-HZD/get_nc_exons.pl".
 				" $main_data_folder $target_bed $ucsc_genes $ucsc_exons $samplename $bam_path $target_exons $hum_ref ".
-				" $bedtools_path $log_file";
+				" $bedtools_path $genomefile $log_file";
 				
 			push(@commands,$program_call);
 
@@ -137,18 +187,22 @@ if ($function eq 'VGII_COV_STEP'){
 	print "Commands executed and running...\n";	
 }
 
-
+#STEP 3
+#suspect HDs are detected and annotation is provided
 #Launch the algorithm
-if ( $function eq 'VGII-HZD'){
+if ( $function eq 'DETECT_HDs'){
 	
 	my $HZD_algorithm = "$program_folder/$program_name/HZD_algorithm.R";
 	my $log_file = $HZD_algorithm.".log";
 
-	my $suff_from_target = extract_name($target_exons,1);
-	my $out_suff = extract_name($target_exons,1)."_VGII-HZD";
+	print "Target exons: $target_bed\n";
+	my $target_suff = extract_name($target_exons,1);
+	print "targetsudd $target_suff\n";
+	my $out_suff = extract_name($target_exons,1)."_VG-HZD";
+	print "out_suff $out_suff\n";
 
-	my $command = $cfg_hash->{'R_path'}." CMD BATCH --no-save --no-restore '--args $bam_list $suff_from_target ucsc_exons exons.noncov $out_folder $out_suff' $HZD_algorithm";			
-	#my $command = $cfg_hash->{'R_path'}." CMD BATCH --no-save --no-restore '--args $bam_list $suff_from_target exons.noncov $out_folder $out_suff' $HZD_algorithm";			
+	my $command = $cfg_hash->{'R_path'}." CMD BATCH --no-save --no-restore '--args $bam_list $target_suff ucsc_exons exons.noncov $out_folder $out_suff $max_lowBoC' $HZD_algorithm";
+
 	print  "Launching $command\n";
 	try_exec_command($command);
 }
@@ -160,11 +214,11 @@ if ( $function eq 'VGII-HZD'){
  Title   : try_exec_slurm_job
  Usage   : try_exec_slurm_job(    
 	$qsub_account => account to use for execution;
-																$qsub_queue => queue to use;
-																$env_vars =s> variables to pass to subject program
-																$program_to_run => program to be run;
-																$lnodes => number of nodes needed;
-																$ppn => number of cpus needed;
+	$qsub_queue => queue to use;
+	$env_vars =s> variables to pass to subject program
+	$program_to_run => program to be run;
+	$lnodes => number of nodes needed;
+	$ppn => number of cpus needed;
                                );
 
  Function:  Given in input a command it will try to execute it with system function more than one times.
@@ -327,46 +381,47 @@ sub extract_name {
   my @list = split("/",$filePath);
   my $complName = pop(@list);
   
-  
-  my @nameElements = split (/\./, $complName);
+  my @nameElements = split(/\./, $complName);
   my $name;
   if ($type eq "0"){ $name = $complName;}
   elsif ($type eq "1"){ 
 	 pop(@nameElements);
-	 my $name = join(".",@sams);
+	 $name = join(".",@nameElements);
 	 }
-  elsif ($type eq "2"){ $name = $nameElements[0].'.'.$nameElements[1];}
+  elsif ($type eq "2"){ 
+	$name = $nameElements[0].'.'.$nameElements[1];
+  }
   elsif ($type eq 'noext'){    
-		my @parts = split(/\./,$filePath);
+	my @parts = split(/\./,$filePath);
     pop @parts;
     $name = join '.', @parts;
-	}
+  }
   elsif ($type eq 'no2ext'){    
-		my @parts = split(/\./,$filePath);
-    pop @parts;
-    pop @parts;
+  my @parts = split(/\./,$filePath);
+    pop @parts;   pop @parts;
     $name = join '.', @parts;
-	}
-  elsif ($type eq "gz"){ $complName =~ /(\S+).gz/;
-                 $name= $1;##Name for uncompressed file
-                 }
-  elsif ($type eq "targz"){$complName =~ /(\S+).tar.gz/;
-                 $name= $1;##Name for uncompressed file
-                 }
-   elsif ($type eq "zip"){$complName =~ /(\S+).zip/;
-                 $name= $1;##Name for uncompressed file
-                 }
-   elsif ($type eq "tar"){$complName =~ /(\S+).tar/;
-                 $name= $1;##Name for uncompressed file
-                 }
+  }
+  elsif ($type eq "gz"){ 
+	$complName =~ /(\S+).gz/; $name= $1;
+  }
+  elsif ($type eq "targz"){
+	$complName =~ /(\S+).tar.gz/;$name= $1;
+   }
+   elsif ($type eq "zip"){
+	$complName =~ /(\S+).zip/; $name= $1;
+   }
+   elsif ($type eq "tar"){
+	$complName =~ /(\S+).tar/; $name= $1;
+   }
    elsif ($type eq "fqgz"){
-		$complName =~ /(\S+)\.\S+\.\S+/;
-		
-                 $name= $1;##Name for uncompressed file
-                 }
-   else { die	"ERROR [$?]: $type is not a valid input extracting a name: ?\n";}
+	$complName =~ /(\S+)\.\S+\.\S+/; $name= $1;
+   }
+    elsif ($type eq "path"){
+                #The last element is removed
+        $name= join '/', @list;
+       }
+   else { die "ERROR [$?]: $type is not a valid input extracting a name: ?\n";}
   return $name;
-  
 }
 
 
@@ -660,7 +715,11 @@ sub parse_command_line_args{
            "b|bedtools=s" => \$bedtools_path,
            "l|bam_list=s" => \$bam_list,
            "f|function=s" => \$function,
-           "t|target=s" => \$target_bed 
+           "t|target=s" => \$target_bed,
+			"m|max_lowBoC=s" => \$max_lowBoC, 
+			"nc|nochr" => \$nochr, 
+			"g|genomefile=s" => \$genomefile,
+			"s|samtools=s" => \$samtools_path
            );
            
            #Print a little help

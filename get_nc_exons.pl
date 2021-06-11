@@ -17,6 +17,7 @@
 #along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+
 use strict;
 use warnings;
 
@@ -75,7 +76,8 @@ if ( -e $target_exons and !(-z $target_exons) ){
 	my $nc_threshold = "0.2";#percent of interval covered
 	my $target_exons_nc = extract_name($target_exons_cov,"noext")."_nc.".$bed_ext;
 	print_and_log( "Get only the chrom and interval, sort and get unique lines...",$log_file);#DEBUGCODE
-	my $command = "sed '".'s/\./,/'."' $target_exons_cov | awk "."'".'$7<'.$nc_threshold."'  > $target_exons_nc";
+	#my $command = "sed '".'s/\./,/'."' $target_exons_cov | awk "."'".'$7<'.$nc_threshold."'  > $target_exons_nc";
+	my $command = " awk "."'".'$7<'.$nc_threshold."' $target_exons_cov  > $target_exons_nc";
 	print_and_log( "\nExecuting command: $command\n",$log_file);#DEBUGCODE
 	try_exec_command($command) or die "Unable to execute command: $command\n";	
 
@@ -166,52 +168,54 @@ sub file_not_present{
 sub extract_name {
   my $filePath = shift;#Path to the file
   my $type = shift;#The type of file
-  
+
   #Separate the path in pieces using slashes
   my @list = split("/",$filePath);
   my $complName = pop(@list);
-  
-  
-  my @nameElements = split (/\./, $complName);
+
+  my @nameElements = split(/\./, $complName);
   my $name;
   if ($type eq "0"){ $name = $complName;}
-  elsif ($type eq "1"){ $name = $nameElements[0];}
-  elsif ($type eq "2"){ $name = $nameElements[0].'.'.$nameElements[1];}
-  elsif ($type eq 'noext'){    
-		my @parts = split(/\./,$filePath);
+  elsif ($type eq "1"){
+         pop(@nameElements);
+         $name = join(".",@nameElements);
+         }
+  elsif ($type eq "2"){
+        $name = $nameElements[0].'.'.$nameElements[1];
+  }
+  elsif ($type eq 'noext'){
+        my @parts = split(/\./,$filePath);
     pop @parts;
     $name = join '.', @parts;
-	}
-  elsif ($type eq 'no2ext'){    
-		my @parts = split(/\./,$filePath);
-    pop @parts;
-    pop @parts;
+  }
+  elsif ($type eq 'no2ext'){
+  my @parts = split(/\./,$filePath);
+    pop @parts;   pop @parts;
     $name = join '.', @parts;
-	}
-  elsif ($type eq "path"){ 
-                 $name = join("/",@list);
-                 }	
-  elsif ($type eq "gz"){ $complName =~ /(\S+).gz/;
-                 $name= $1;##Name for uncompressed file
-                 }
-  elsif ($type eq "targz"){$complName =~ /(\S+).tar.gz/;
-                 $name= $1;##Name for uncompressed file
-                 }
-   elsif ($type eq "zip"){$complName =~ /(\S+).zip/;
-                 $name= $1;##Name for uncompressed file
-                 }
-   elsif ($type eq "tar"){$complName =~ /(\S+).tar/;
-                 $name= $1;##Name for uncompressed file
-                 }
+  }
+  elsif ($type eq "gz"){
+        $complName =~ /(\S+).gz/; $name= $1;
+  }
+  elsif ($type eq "targz"){
+        $complName =~ /(\S+).tar.gz/;$name= $1;
+   }
+   elsif ($type eq "zip"){
+        $complName =~ /(\S+).zip/; $name= $1;
+   }
+   elsif ($type eq "tar"){
+        $complName =~ /(\S+).tar/; $name= $1;
+   }
    elsif ($type eq "fqgz"){
-		$complName =~ /(\S+)\.\S+\.\S+/;
-		
-                 $name= $1;##Name for uncompressed file
-                 }
-   else { die	"ERROR [$?]: $type is not a valid input extracting a name: ?\n";}
+        $complName =~ /(\S+)\.\S+\.\S+/; $name= $1;
+   }
+      elsif ($type eq "path"){
+                #The last element is removed
+        $name= join '/', @list;
+       }
+   else { die "ERROR [$?]: $type is not a valid input extracting a name: ?\n";}
   return $name;
-  
 }
+
 
 
 

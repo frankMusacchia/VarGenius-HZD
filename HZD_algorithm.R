@@ -1,3 +1,4 @@
+
 #VarGenius-HZD searches rare homozygous and hemizygous deletions in targeted sequencing
 #Copyright (C) 2021 Francesco Musacchia
 
@@ -74,11 +75,11 @@ nc_suffix = paste(targetexons_name,noncov_suff,sep="_")
 gen_cov_suffix =  paste(targetexons_name,"bed",sep=".")
 
 #General parameters
-#Type of analysis and CNV type to detect. As far as 2020 this tool can detect only DELetions
+#Type of analysis and CNV type to detect. As far as 2021 this tool can detect only DELetions
 analtype = "single"#"family"
 cnv_type_suff = "DEL" #These are deletions
 #I use here 2 because I consider that a maximum of 2 samples have the same non-covered region
-max_samples_with_lowcov = 2
+max_samples_with_lowcov = args[7]
 
 
 #Open the samples table with included paths for coverage analysis output
@@ -234,7 +235,7 @@ get_suspect_regions = function (suspect_table_f,nc_genes_all_temp) {
 		}
 	}	
 	#Print the suspect table. Useful to check for outliers
-	write.table(suspect_table,file=suspect_table_f,sep="\t",row.names=F, quote=F)	
+	#write.table(suspect_table,file=suspect_table_f,sep="\t",row.names=F, quote=F)	
 	suspect_table
 }
 
@@ -353,12 +354,22 @@ suspect_table <- get_suspect_regions(suspect_table_f,nc_genes_all_temp)
 	final_table <- data.frame(
 		 samplename=character(), 
 		 compid=character(),
-		 value=character(),
-		  preads=character(),  
-		  freads=character(),  
-		  mreads=character(),  
-		  avgreads=character(),  
+		 pBoC=character(),
+		  pDoC=character(),  
+		  fDoC=character(),  
+		  mDoC=character(),  
+		  avgDoC=character(),  
 		 stringsAsFactors=FALSE)
+		 
+#		 	final_table <- data.frame(
+#		 samplename=character(), 
+#		 compid=character(),
+#		 value=character(),
+#		  preads=character(),  
+#		  freads=character(),  
+#		  mreads=character(),  
+#		  avgreads=character(),  
+#		 stringsAsFactors=FALSE)
 	 #Go through the intervals to be considered
 	 tot_intervals <- length(sel_intervals)
 	for (interv_num in 1:tot_intervals ){
@@ -417,7 +428,7 @@ suspect_table <- get_suspect_regions(suspect_table_f,nc_genes_all_temp)
 	final_table$end <- as.numeric(sapply(strsplit(as.character(temp2),'_'), "[", 1))
 	final_table$cnv_type = sapply(strsplit(as.character(temp2),'_'), "[", 2)
 	#Print output	
-	write.table(final_table,file=paste(out_f,paste(targetexons_name,out_suff,"final_suspect_table.txt",sep="_"),sep="/"),sep="\t",row.names=F, quote=F)
+	#write.table(final_table,file=paste(out_f,paste(targetexons_name,out_suff,"final_suspect_table.txt",sep="_"),sep="/"),sep="\t",row.names=F, quote=F)
 
 	#Add gene name using the interval gene correspondence
 	interval_2_gene$full_compid <- paste(interval_2_gene$compid,cnv_type_suff,sep="_")
