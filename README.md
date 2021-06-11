@@ -63,14 +63,23 @@ perl HZD_launch.pl -f DETECT\_HDs -p /folder/where/you/downloaded/thistool/ -o /
 **OUTPUT Description**
 
 *VarGenius-HZD* outputs a TAB separated file with the following fields:
+
 compid: an identifier of the HD
+
 samplename: (self-explained)
+
 pBoC: sample Breadth-of-coverage
+
 pDoC: sample Depth-of-coverage
+
 fDoC: father Depth-of-coverage (only in VarGenius)
+
 mDoC: mather Depth-of-coverage (only in VarGenius)
+
 avgDoC: average Depth-of-coverage across samples
+
 cnv_type: type of CNV
+
 gene: UCSC gene symbol
 
 
