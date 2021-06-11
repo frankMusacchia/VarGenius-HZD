@@ -96,12 +96,14 @@ It requires the use of bedtools and samtools.
 2. The bam_list.txt file will be used by *VarGenius-HZD* please change paths accordingly. The samples names containing *\_deleted* indicate those where the deletions will be introduced.
 3. Download the 1KGP target BED file here: http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase1/analysis_results/supporting/exome_pull_down/20120518.analysis_exome_targets.consensus.annotation.bed
 4. Once downloaded the BAM file you will need to insert the deletions. Samples names and corresponding region deleted are the following:
-	
+
+```	
 NA06989 21 48063447 48063551
 NA07347 21 27326904 27327003
 NA12058 21 35091133 35091161
 NA12748 21 10906904 10907040
 NA12830 21 40188932 40189015
+```
 
 Please create 5 new BED files containing the 5 intervals above and use the following commands to generate the new BAM files
 	
