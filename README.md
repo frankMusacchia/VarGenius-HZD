@@ -4,6 +4,9 @@ Rare homozygous/hemizygous deletions caller within a set of BAM files
 
 ----------------------------------------
 
+Please, clone or download the entire folder of VarGenius-HZD from this repository. 
+Installation is not required, but you need some dependencies...
+
 **Dependencies**
 
 R
@@ -13,6 +16,9 @@ PERL (Needed libraries: Parallel::ForkManager; Getopt::Long
 bedtools
 
 samtools 
+
+once those are installed, prepare your input:
+
 
 **Input to prepare**
 
@@ -42,6 +48,7 @@ sampleB	/path/to/SampleB.bam
 
 ```
 
+Now you should be able to run VarGenius-HZD pre processing and algorith:
 
 **Step 1: Get the exons on-target (to be run only once per-target)**
 
