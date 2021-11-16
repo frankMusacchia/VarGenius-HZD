@@ -1,6 +1,6 @@
 
 #VarGenius-HZD searches rare homozygous and hemizygous deletions in targeted sequencing
-#Copyright (C) 2021 Francesco Musacchia
+#Copyright (C) 2022 Francesco Musacchia
 
 #This program is free software: you can redistribute it and/or modify
 #it under the terms of the GNU General Public License as published by
@@ -54,37 +54,38 @@ targetexons_name = args[2]
 targetexons_name
 
 #The suffix for the genomecov output tables
-exons_suff = args[3]
-exons_suff
+#exons_suff = args[3]
+#exons_suff
 
 #The suffix for the non coovered exons tables
-noncov_suff = args[4]
+noncov_suff = args[3]
 noncov_suff
 
-#output folder
-out_f = args[5]
-out_f
+#input folder with results from get_nc_exons.pl
+input_fold = args[4]
+input_fold
 
 #output suffix
-out_suff = args[6]
+out_suff = args[5]
 out_suff
 
+#I use here 2 because I consider that a maximum of 2 samples have the same non-covered region
+max_samples_with_lowcov = args[6]
 
-nc_suffix = paste(targetexons_name,noncov_suff,sep="_")
+nc_suffix =  noncov_suff #paste(targetexons_name,noncov_suff,sep="_")
 #gen_cov_suffix =  paste(paste(enrichmentkit_name,exons_suff,sep="_"),"bed",sep=".")
-gen_cov_suffix =  paste(targetexons_name,"bed",sep=".")
+gen_cov_suffix =  "bed"#paste(targetexons_name,"bed",sep=".")
 
 #General parameters
 #Type of analysis and CNV type to detect. As far as 2021 this tool can detect only DELetions
-analtype = "single"#"family"
+analtype = args[6]# "single"#"family"
 cnv_type_suff = "DEL" #These are deletions
-#I use here 2 because I consider that a maximum of 2 samples have the same non-covered region
-max_samples_with_lowcov = args[7]
+
 
 
 #Open the samples table with included paths for coverage analysis output
 samples_tab <- read.delim(samples_tab_f,stringsAsFactors=F,head=T,quote="",sep="\t")
-
+max_samples_with_lowcov
 
 
 #Splits the string using the underscore (_) and removes the last element.
@@ -127,7 +128,7 @@ for ( samples_count in 1:nrow(samples_tab) ){
 	samplename <- samples_tab[samples_count,c("samplename")]
 	samplename
 	bampath <- samples_tab[samples_count,c("path")]
-	input_fold<-dirname(bampath)	
+	#input_fold<-out_f#dirname(bampath)	
 	
 	nc_genes_t <- paste(input_fold,paste(samplename,nc_suffix,sep="_"),sep="/")
 	print (nc_genes_t)
@@ -192,7 +193,7 @@ get_suspect_regions = function (suspect_table_f,nc_genes_all_temp) {
 					 Value=character(), 
 					 stringsAsFactors=FALSE) 
 					 
-	#Now count the occurrencies of percentages.  Equal percentages are most probably regions which cannot be
+	#Now count the occurrencies of percentages. Equal percentages are most probably regions which cannot be
 	#seen by the sequencer
 	out_name = paste(targetexons_name,"suspect_intervals.txt",sep="_")
 	cat(paste("interv_uniq","sam_name_uniq","value",sep="\t"),file=out_name,append = FALSE)
@@ -247,25 +248,31 @@ get_suspect_regions = function (suspect_table_f,nc_genes_all_temp) {
 toremove<-list()
 
 nc_genes_all_temp <- nc_genes_all
-#Remove outliers and re launch the search of suspect
-suspect_table_f <- paste(out_f,paste(targetexons_name,out_suff,"suspect_table.txt",sep="_"),sep="/")
+suspect_table_f <- paste(input_fold,paste(targetexons_name,out_suff,"suspect_table.txt",sep="_"),sep="/")
 suspect_table <- get_suspect_regions(suspect_table_f,nc_genes_all_temp)
 
 
-##Open the table and calculate number of CNVs per-sample to filter those samples
-##which are more than 3 stdev from the mean
-##suspect_table <- read.delim(suspect_table_f,stringsAsFactors=F,head=T,quote="",sep="\t")
-#cf <- as.data.frame(ftable(suspect_table[,"samplename"]))
-#cf_f <- cf[cf$Freq > (sd(cf$Freq) * 3), ]
-#a <- list(as.vector(cf_f$Var1))
-#toremove <- append(toremove,a)
+##Remove outliers and re launch the search of suspect only if you are analyzing more than 20 samples
+#if (nrow(samples_tab) > 20){
+#	##Open the table and calculate number of CNVs per-sample to filter those samples
+#	##which are more than 3 stdev from the mean
+#	#suspect_table <- read.delim(suspect_table_f,stringsAsFactors=F,head=T,quote="",sep="\t")
+#	cf <- as.data.frame(ftable(suspect_table[,"samplename"]))
+#	cf_f <- cf[cf$Freq > (sd(cf$Freq) * 3), ]
 
-##If the number of outliers is greater then one, filter out the outlier and restart the suspect search
-#if (nrow(cf_f) > 0){
-#	nc_genes_all_f <- nc_genes_all_temp[ , -which(names(nc_genes_all_temp) %in% toremove)]
-#	nc_genes_all_temp <- nc_genes_all_f	
-#	suspect_table <- get_suspect_regions(suspect_table_f,nc_genes_all_temp)
+#	outl <- list(as.vector(cf_f$Var1))
+#	#Print the list of outliers
+#	outl
+#	toremove <- append(toremove,outl)
+
+#	##If the number of outliers is greater then one, filter out the outlier and restart the suspect search
+#	if (nrow(cf_f) > 0){
+#		nc_genes_all_f <- nc_genes_all_temp[ , -which(names(nc_genes_all_temp) %in% toremove)]
+#		nc_genes_all_temp <- nc_genes_all_f	
+#		suspect_table <- get_suspect_regions(suspect_table_f,nc_genes_all_temp)
+#	}	
 #}
+
 	
 	
 #####################
@@ -296,7 +303,7 @@ suspect_table <- get_suspect_regions(suspect_table_f,nc_genes_all_temp)
 	for ( samples_count in 1:nrow(samples_tab) ){
 		samplename <- samples_tab[samples_count,c("samplename")]
 		bampath <- samples_tab[samples_count,c("path")]
-		input_fold<-dirname(bampath)	
+		#input_fold<-dirname(bampath)	
 				
 		print (paste("Getting raw coverage for: ",samplename,sep =" "))
 		#Check if the user wants the analysis per-family
@@ -311,7 +318,7 @@ suspect_table <- get_suspect_regions(suspect_table_f,nc_genes_all_temp)
 		
 		#For each component of the family, get the genomeCovBed table 
 		for (component in components) {
-			geno_cov_f <- paste(input_fold,paste(component,gen_cov_suffix,sep="_"),sep="/")
+			geno_cov_f <- paste(input_fold,paste(component,gen_cov_suffix,sep="."),sep="/")
 			#Check that the file exists and is non empty
 			if (file.info(geno_cov_f)$size > 0 & file.exists(geno_cov_f)){
 				geno_cov <- read.delim(geno_cov_f,stringsAsFactors=F,head=F,quote="",sep="\t")
@@ -428,14 +435,14 @@ suspect_table <- get_suspect_regions(suspect_table_f,nc_genes_all_temp)
 	final_table$end <- as.numeric(sapply(strsplit(as.character(temp2),'_'), "[", 1))
 	final_table$cnv_type = sapply(strsplit(as.character(temp2),'_'), "[", 2)
 	#Print output	
-	#write.table(final_table,file=paste(out_f,paste(targetexons_name,out_suff,"final_suspect_table.txt",sep="_"),sep="/"),sep="\t",row.names=F, quote=F)
+	#write.table(final_table,file=paste(input_fold,paste(targetexons_name,out_suff,"final_suspect_table.txt",sep="_"),sep="/"),sep="\t",row.names=F, quote=F)
 
 	#Add gene name using the interval gene correspondence
 	interval_2_gene$full_compid <- paste(interval_2_gene$compid,cnv_type_suff,sep="_")
 	interval_2_gene_f <- interval_2_gene[,c("V11","full_compid")]
 	colnames(interval_2_gene_f)[which(colnames(interval_2_gene_f)=="V11")] <- "gene"
 	final_table_fg <- merge(final_table,interval_2_gene_f,by.x="compid",by.y="full_compid",all.x=T)
-	write.table(final_table_fg,file=paste(out_f,paste(targetexons_name,out_suff,"final_suspect_table_gene.txt",sep="_"),sep="/"),sep="\t",row.names=F, quote=F)	
+	write.table(final_table_fg,file=paste(input_fold,paste(targetexons_name,out_suff,"final_suspect_table_gene.txt",sep="_"),sep="/"),sep="\t",row.names=F, quote=F)	
 
 #}
 

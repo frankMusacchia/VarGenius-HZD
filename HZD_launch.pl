@@ -1,7 +1,14 @@
 #!/usr/bin/perl
 
+#VarGenius-HZD path
+use lib '/home/francesco/bin/VarGenius-HZD/';
+use lib '/home/francesco/bin/VarGenius-HZD/LIB/';
+use lib '/home/francesco/bin/VarGenius-HZD/LIB/PERL/';
+
+####PLATFORM_SPECIFIC_SETTINGS_TERMINATED
+
 #VarGenius-HZD searches rare homozygous and hemizygous deletions in targeted sequencing
-#Copyright (C) 2021 Francesco Musacchia
+#Copyright (C) 2022 Francesco Musacchia
 
 #This program is free software: you can redistribute it and/or modify
 #it under the terms of the GNU General Public License as published by
@@ -17,20 +24,78 @@
 #along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-
 use strict;
 use warnings;
 use Getopt::Long;
 use Parallel::ForkManager;#For parallel executions
 use File::Copy;#To manage files
 
-my $parallelism = "threads";
+#Using a library to manage configuration files and their global variables
+use LIB::programs_management qw(hash2ConfigFile configFile2Hash try_exec_command 
+				try_exec_job initialize_folders print_and_log log_and_exit
+				separate_input_ids remove_sample_sheet show_analyses_from_sample_sheet
+				get_ped_file remove_analyses clean_folders save_analyses checkConfigVariables
+				separate_bed_perchr show_analysesids_from_analysesnames show_samples_from_group
+				check_config_parameters check_genedb_links get_flowcell_and_lane
+				get_ped_file_for_enlarged_analysis store_and_compress_analyses
+				exec_store_and_compress_analyses check_datasets_links
+				show_samplesids_from_samplesnames get_extended_regions
+				JOB_get_status_field JOB_is_active_queue);
+	
 
-my $cfg_hash;
-$cfg_hash->{'qsub_cmd'} = "sbatch";
-$cfg_hash->{'R_path'} = "R";
+#Using a library to manage files
+use LIB::files_management qw( save_hash load_hash file_not_present
+				download_file dl_and_extract delete_file extract_columns_from_file
+				append_str_2_file check_presence file_num_rows 
+				invert_cols_position get_col_index insert_col_in_file_table delete_columns
+				extract_col_from_file file_name_wostrange_chars append_hash_to_file
+				delete_rows_containing file_list_to_array extract_colnum_from_file_linux
+				shift_column compress_folder extract_name append_str_2_file_if_path_notexist
+				join_files_with_cat separate_elements_on_col join_vcf_files_with_cat
+				vcf_insert_string_into_field vcf_filter_identical_calls
+				overwrite_str_in_file_if_exists tsv_2_xls list_to_array
+				count_lines_file compid_intervals_2_bed insert_line_into_file
+				is_folder_empty append_file_2_file merge_rows_with_same_col
+				print_str_2_file extract_file_folder delete_file_list
+				append_list_2_file);
+			
+#my $progDir;
+#BEGIN { $progDir = getcwd; }
+#use lib "$progDir/LIB/PERL/";
 
 my $program_name = "VarGenius-HZD";
+my $folders_file = "folders.txt";
+
+#Get working and program folders
+my $workDir = ""; 
+my $progDir = "";
+
+($workDir,$progDir) = initialize_folders($folders_file);
+
+my $parallelism = "threads";
+
+#Get the confighash and pre-defined variables
+my $cfg_hash;
+my $program_config = "$progDir/CONFIGURATION/program_config.txt";
+#checkConfigVariables($program_config,$variables_file,1);
+configFile2Hash($program_config,\$cfg_hash);
+
+#Set needed folders
+my $lib_folder = $cfg_hash->{'lib_folder'};#"LIB";
+my $config_folder = $cfg_hash->{'config_folder'};#"CONFIGURATION";
+my $data_folder = $workDir."/".$cfg_hash->{'data_folder'};
+my $log_folder = $workDir."/".$cfg_hash->{'log_folder'};
+
+my $perl_libs_paths_f = $cfg_hash->{'perl_libs_paths_f'};# "perl_libs_paths.txt";#Into config folder
+
+my @main_pls = split(",",$cfg_hash->{'vg_pl_scripts_2_update'});
+
+
+my $vargenius_sing_cont = $cfg_hash->{'vargenius_sing_cont'};
+my $perl_mod_folder = "PERL";
+my $log_file = "";
+
+
 my $program_folder = "";
 my $out_folder = "";
 my $function = "";#function to execute						
@@ -39,14 +104,17 @@ my $target_bed = "";
 #human reference
 my $hum_ref = ""; 
 #Path to bedtools
-my $bedtools_path = "";# 
-my $samtools_path = "";
+my $bedtools_path = $cfg_hash->{'bedtools_path'};# 
+my $samtools_path = $cfg_hash->{'samtools_path'};
+
+my $HZD_algorithm = "$progDir/HZD_algorithm.R";
+
 my $coverbed_prog = "coverage";
 my $sortbed_prog = "sort";
 my $intersectbed_prog = "intersect";
 
 #max_samples_with_lowcov
-my $max_lowBoC = "";
+my $max_lowBoC = "2";
 
 #If the BAM files do not contain the "chr"
 my $nochr ="";
@@ -59,37 +127,42 @@ my $genomefile = "";
 parse_command_line_args();
 
 #Folder containing needed data
-my $main_data_folder = $program_folder."/$program_name/data/";
+my $main_data_folder = "$progDir/data/";
 my $program_call = $program_folder."/$program_name/get_nc_exons.pl";
-#UCSC genes bed file
-my $ucsc_genes = $main_data_folder."/ucsc_genes.bed";
-#Prepare Target Exons:
-my $ucsc_exons = $main_data_folder."/UCSC_coding_exons.bed";
-my $target_exons = extract_name($target_bed,"noext")."_ucsc_exons_bed";
 
-if (file_not_present($target_bed) ){ die "Cannot proceed Check: $target_bed.\n";}
 
-	
-if (! (-d $out_folder) ){
-	die "ERROR: $out_folder does not exist. Please use --out_folder\n";
+#UCSC exons and genes bed file
+my $ucsc_genes = $main_data_folder."/ucsc_genes_hg19";
+my $ucsc_exons = $main_data_folder."/ucsc_exons_hg19";
+if ($nochr){
+	$ucsc_genes .= "_nochr";
+	$ucsc_exons .= "_nochr";
 }
+$ucsc_genes .= ".bed";
+$ucsc_exons .= ".bed";
 
-my $log_file = $out_folder."/".$function.".log";
+my $target_exons = "$data_folder/".extract_name($target_bed,"1")."_ucsc_exons.bed";#MODIFED
+print "Setting the datasets to use:\n";
+print "ucsc_genes: $ucsc_genes\n";
+print "ucsc_exons: $ucsc_exons\n";
+print "target_exons: $target_exons\n";
+#my $target_exons = "coverage.bed";
 
-#Check for bedtools
-if (! (-e $bedtools_path) ){
-	die "ERROR: bedtools path was not provided. Please use --bedtools\n";
-}
+
+$log_file = $log_folder."/".$function.".log";
+
 
 
 ##STEP 1
 ##The target BED file will be used with UCSC exons to select only exons on target.
 if ($function eq 'GET_EXONS_ON_TARGET'){
 	
+	if (file_not_present($target_bed)>0 ){ die "ERROR. The target BED is required in input. Please use --target.\n";}
 
 	if ( !(-e $target_exons) or (-z $target_exons) ){
 		print_and_log( "Getting the exons on the target...",$log_file);#DEBUGCODE
 
+		
 		#1. Intersect the exons with the target so that we have the exons on-target
 		#to see how much is the overlap and also when overlap is missing	
 		#Parameters used are:
@@ -105,12 +178,7 @@ if ($function eq 'GET_EXONS_ON_TARGET'){
 		my $command = " cut -f1-3 $target_exons.temp | sort -k1,1V -k2,2n | uniq > $target_exons.temp2";
 		print_and_log( "\nExecuting command: $command\n",$log_file);#DEBUGCODE
 		try_exec_command($command) or die "Unable to execute command: $command\n";		
-		
-		#Sort using bedtools and a reference chromosome order
-		#my $chr_order_f = "chr_order.txt";
-		#my $sortparams = " -faidx $main_data_folder/$chr_order_f ";
-		#run_BEDTOOLS_sortBed("$target_exons.temp2",$sortparams,"$target_exons.temp3",$log_file);
-		
+
 		#Removing "chr" from target exons since the BAM files contain 1 instead of chr1
 		if ($nochr){
 			print_and_log( "Removing chr...",$log_file);#DEBUGCODE
@@ -121,7 +189,7 @@ if ($function eq 'GET_EXONS_ON_TARGET'){
 		}else{
 			move("$target_exons.temp2",$target_exons);
 		}
-		
+		print_and_log( "\nExons-on-target file generation is done!\n",$log_file);#DEBUGCODE
 	
 			
 		#if (  $remove_temp eq 'YES' ){
@@ -132,31 +200,18 @@ if ($function eq 'GET_EXONS_ON_TARGET'){
 	}else{print "Cool! $target_exons already present! Go ahead with VarGenius-HZD!\n";}	
 }
 
+
 #STEP 2
 #A Genome file is generated if not provided for bedtools and for each sample in bam_list.txt
 #will be executed bedtools coverage to obtain BoC and DoC for exons_on_target
 if ($function eq 'HZD_PREPROCESSING'){
 
-#Check for samtools
-if (! (-e $samtools_path) ){
-	die "ERROR: samtools path was not provided. Please use --samtools\n";
-}
+my $config_file = $log_folder."/".$function.".hash";
 
-	#If the genomefile is not provided generate one per-default. This works for ucsc.hg19 and 1KGP BAM files
-	if ( file_not_present($genomefile) ){ 
-		$genomefile = extract_name($hum_ref,"noext").".genomefile";
-		print "You did not provide a genome file in input. One by default wil be used\n";
-		if ( file_not_present($genomefile) ){
-		print "$genomefile not present... generating it: ";
-		my $command = " $samtools_path faidx $hum_ref; cut -f1,2 $hum_ref.fai | sort -k1,1V | grep -v '^Un' | grep -v 'random' |grep -v 'hap' ".
-			" | sed 's/chr//' > $genomefile";
-		print_and_log( "\nExecuting command: $command\n",$log_file);#DEBUGCODE
-		try_exec_command($command) or die "Unable to execute command: $command\n";	
-		}
+save_hash(\$cfg_hash,$config_file);
 
-	}
 
-	my $log_file = $main_data_folder."/$program_name.log";
+	my $log_file = $log_folder."/$program_name.log";
 
 	#This analysis is performed for each sample, hence the first operation is to get the samples list 
 	open (FILE,"<$bam_list") or die "Cannot open $bam_list\n";
@@ -174,9 +229,9 @@ if (! (-e $samtools_path) ){
 			my $samplename = $pieces[0];
 			my $bam_path = $pieces[1];
 			
-			my 	$program_call = "perl $program_folder/VarGenius-HZD/get_nc_exons.pl".
-				" $main_data_folder $target_bed $ucsc_genes $ucsc_exons $samplename $bam_path $target_exons $hum_ref ".
-				" $bedtools_path $genomefile $log_file";
+			my 	$program_call = "perl $progDir/get_nc_exons.pl".
+				" $main_data_folder $ucsc_genes $ucsc_exons $samplename $bam_path $target_exons ".
+				" $config_file $log_file $workDir";
 				
 			push(@commands,$program_call);
 
@@ -192,16 +247,19 @@ if (! (-e $samtools_path) ){
 #Launch the algorithm
 if ( $function eq 'DETECT_HDs'){
 	
-	my $HZD_algorithm = "$program_folder/$program_name/HZD_algorithm.R";
-	my $log_file = $HZD_algorithm.".log";
-
-	print "Target exons: $target_bed\n";
+	#Check for samtools
+	if (! (-e $bam_list) ){
+		die "list of samples to analyze was not provided. Please use --bam_list\n";
+	}
+	#print "Target exons: $target_bed\n";
 	my $target_suff = extract_name($target_exons,1);
-	print "targetsudd $target_suff\n";
+	print "targetsuff $target_suff\n";
 	my $out_suff = extract_name($target_exons,1)."_VG-HZD";
 	print "out_suff $out_suff\n";
 
-	my $command = $cfg_hash->{'R_path'}." CMD BATCH --no-save --no-restore '--args $bam_list $target_suff ucsc_exons exons.noncov $out_folder $out_suff $max_lowBoC' $HZD_algorithm";
+	
+	#my $command = $cfg_hash->{'R_path'}." CMD BATCH --no-save --no-restore '--args $bam_list $target_suff ucsc_exons _exons.noncov $out_folder $out_suff $max_lowBoC' $HZD_algorithm";
+	my $command = $cfg_hash->{'R_path'}." CMD BATCH --no-save --no-restore '--args $bam_list $target_suff exons.noncov $workDir $out_suff $max_lowBoC ".$cfg_hash->{'analtype'}."' $HZD_algorithm";
 
 	print  "Launching $command\n";
 	try_exec_command($command);
@@ -350,156 +408,34 @@ sub try_exec_slurm_job{
 
 
 
+=head2 grep_file
+ Title  : grep_file
+ Usage  : grep_file(  -fileToCheck => 'path to the file to check');
 
-=head2 extract_name
+ Function: 	Checks if a file  contains the string given in input
 
- Title   : extract_name
- Usage   : extract_name( -filePath => 'complete path of the file',
-                        -type => 'a number saying what you want to extract'
-			       );
-
- Function: extract the name from a complete path of a file. Even the file name only with the extension
-              0: the complete name with the extension
-              1: the name only (remove the last extension: string separated by dot)
-              2: the first two words joined by a dot
-              noext: just remove the last extension from the path
-              no2ext: remove the last 2 extensions from the path
-              gz: the name from the .gz
-              targz: the name from the .tar.gz
-              zip: the name from the .zip
-              tar: the name from the .tar
-              fqgz: the name before two extensions
-
- Returns : the name only
+ Returns : 1 if the string is present, otherwise 0
 
 =cut
-sub extract_name {
-  my $filePath = shift;#Path to the file
-  my $type = shift;#The type of file
-  
-  #Separate the path in pieces using slashes
-  my @list = split("/",$filePath);
-  my $complName = pop(@list);
-  
-  my @nameElements = split(/\./, $complName);
-  my $name;
-  if ($type eq "0"){ $name = $complName;}
-  elsif ($type eq "1"){ 
-	 pop(@nameElements);
-	 $name = join(".",@nameElements);
-	 }
-  elsif ($type eq "2"){ 
-	$name = $nameElements[0].'.'.$nameElements[1];
-  }
-  elsif ($type eq 'noext'){    
-	my @parts = split(/\./,$filePath);
-    pop @parts;
-    $name = join '.', @parts;
-  }
-  elsif ($type eq 'no2ext'){    
-  my @parts = split(/\./,$filePath);
-    pop @parts;   pop @parts;
-    $name = join '.', @parts;
-  }
-  elsif ($type eq "gz"){ 
-	$complName =~ /(\S+).gz/; $name= $1;
-  }
-  elsif ($type eq "targz"){
-	$complName =~ /(\S+).tar.gz/;$name= $1;
-   }
-   elsif ($type eq "zip"){
-	$complName =~ /(\S+).zip/; $name= $1;
-   }
-   elsif ($type eq "tar"){
-	$complName =~ /(\S+).tar/; $name= $1;
-   }
-   elsif ($type eq "fqgz"){
-	$complName =~ /(\S+)\.\S+\.\S+/; $name= $1;
-   }
-    elsif ($type eq "path"){
-                #The last element is removed
-        $name= join '/', @list;
-       }
-   else { die "ERROR [$?]: $type is not a valid input extracting a name: ?\n";}
-  return $name;
+sub grep_file{
+	my $fileToCheck = shift;
+	my $string = shift;
+	
+	my $retval = 0;
+	open( FILE, "<$fileToCheck" ) or die "$!";
+	while (my $line = <FILE>) {
+		if ( $line =~ /$string/ ) {
+			print "found one!\n";#DEBUGCODE
+			$retval = 1;
+			last;
+		}
+		#else{
+		 #print "$line does not match $string\n";
+		#}
+	}
+	close(FILE);
+	return $retval;
 }
-
-
-=head2 print_and_log
-
- Title   : print_and_log
- Usage   : print_and_log( - string -> the sentence that have to be print_and_log 
-											- onlyLog -> a number);
-
- Function: will print (the string in input always in the log file and on the STDOUT
-					if onlyLog is used then the print will be only in the log file
- Returns : nothing
-
-=cut
-sub print_and_log{
-  my $string = shift;    
-  my $logFile = shift; 
-  my $onlyLog = shift;
-  
-  open(LOG, ">>$logFile") or die "ERROR [$!]: Cannot open $logFile! Check permissions.\n";
-  if ( defined $onlyLog){
-    print LOG $string;
-  }else{
-    my $STDOUT = *STDOUT;
-    my $LOG = *LOG;
-    #Prints on both OUT
-    for ($LOG, $STDOUT) { print $_ $string; }
-  }
-  #Close the log
-	close(LOG)
-}
-
-
-
-
-=head2 try_exec_command
-
- Title   : try_exec_command
- Usage   : try_exec_command( -sysCall => is the string that should be repeated
-                               );
-
- Function:  Given in input a command it will try to execute it with system function more than one times.
-
- Returns : 1 if succeed, -1 otherwise
-
-=cut
-sub try_exec_command{
-    my $command = shift;
-
-    my $maxTimes = 5;
-    my $success = -1;
-    my $timesCount = 0;
-
-    while ($success == -1 and $timesCount < $maxTimes){
-        if ( (system $command) == 0) {
-          $success = 1;
-        }
-        else{
-         if ($? == -1) {
-              print "failed to execute: $!\n";
-          }
-          elsif ($? & 127) {
-              printf "child died with signal %d, %s coredump\n",
-                  ($? & 127),  ($? & 128) ? 'with' : 'without';
-          }
-          elsif ($? == 35 ) {
-              printf "child exited normally\n",
-              $success = 1;   
-          }          
-          else {
-              printf "child exited with value %d\n", $? >> 8;
-          }
-         $timesCount++;
-        }
-    }
-    return $success;
-}
-
 
 
 =head2 execute_threads
@@ -615,78 +551,111 @@ sub run_BEDTOOLS_intersectBed{
 	try_exec_command($command) or die "Unable to execute command: $command\n";		
 }
 
-=head2 file_not_present
- Title  : file_not_present
- Usage  : file_not_present(  -fileToCheck => 'path to the file to check');
+#
 
- Function: 	Checks if a file is present and its dimensions are more than zero
+=head2 substitute_start_of_file
 
- Returns : 1 if the filename is an empty string
-					 2 if the file is not present
-					 3 if the file is present but the size is 0
+ Title   : substitute_start_of_file
+ Usage   : substitute_start_of_file( - path1 -> the file to be copied,
+                                - path2 => the file to be written)
 
-=cut
-sub file_not_present{
- my $fileToCheck = shift;
- 
- my $retVal = 0;
- #print $fileToCheck." \n";
- if ( $fileToCheck ne ''){
-   if(-z $fileToCheck){
-    $retVal = 1;
-    print "$fileToCheck is present but empty...!\n";
-   }
-   #-e could return false if the directory is not readable by the program giving a misleading behaviour
-	
-   if(! (-e $fileToCheck) ){
-    $retVal = 2;
-		#print "$fileToCheck does not exists..\n";
-   }
- }else{
-	 print "The file to be checked is an empty string. Please check the code...\n";
-	 $retVal = 3;
-	}
- 
- return $retVal;
-}
-
-=head2 delete_file
-
- Title   : delete_file
- Usage   : delete_file( -filePath => 'a path to a file to delete'
-			       );
-
- Function:  Delete a file in a given location. It can erase also more 
-						than one file starting with the same name. This
-            can be done by using the usual '*'. When it is found the 
-            'glob' keyword will be used.
- Returns : Error code: 1 -> correctly deleted; -1 -> error with perl function; -2 file does not exist
+ Function: substitutes the start of the file given in input.
+					It searches for the string_to_find, and until that string
+					writes only the string_to_ins in the new file. Once that the string
+					is found it copies all the rest of the input file into the output
+					
+ Returns : nothing
 
 =cut
-sub delete_file{
-  my $filePath = shift;
+sub substitute_start_of_file{
+  my $file = shift;
+  my $string_to_find = shift;
+  my $string_to_ins = shift;
  
-  my $retVal = 0;
+  my $temp_f = $file.".temp";
   
-	#With this first IF we can delete a set of file with the same name
-	if ($filePath =~ /\*/){
-		$retVal = 1;
-		unlink glob $filePath or $retVal = -1;
-	 }elsif ( -e $filePath ){
-			if  ( unlink($filePath) == 1) {
-				$retVal = 1;
-				#deleted successfully
-			}else{
-			# not deleted for some problems with unlink subroutine or the file does not exist anymore
-				$retVal = -1;
-			}
-	}else{
-	# does not exist
-		$retVal = -2;
-	}
-    
-  return $retVal;
+  open(TEMP, ">$temp_f") or die "Couldn't open file $temp_f";
+  open(FILE, "<$file") or die "Couldn't open file $file";
+	
+	#Print the input string in the new file
+	print TEMP $string_to_ins."\n";
+	
+	# print the lines before the change
+	while( my $line = <FILE> ) {
+    chop($line);
+    last if $line eq $string_to_find; # chosen string to find found
+   }
+
+	print TEMP $string_to_find."\n";
+	# print the rest of the lines
+	while( my $line = <FILE> )  {
+     print TEMP $line;
+   }
+  close(TEMP);  
+  close(FILE);
+  
+  #Overwrite input file
+  move($temp_f,$file) or print "ERROR: unable to move $temp_f into $file\n";
+	#Remove the temp file
+	unlink($temp_f);
 }
+
+=head2 substitute_text_in_file
+
+ Title   : substitute_text_in_file
+ Usage   : substitute_text_in_file( - path1 -> the file to be copied,
+                                - path2 => the file to be written)
+
+ Function: substitutes a text within a file given a start and an end strings
+					
+ Returns : nothing
+
+=cut
+sub substitute_text_in_file{
+  my $file = shift;
+  my $start = shift;
+  my $end = shift;
+  my $string_to_ins = shift;
+ 
+  my $temp_f = $file.".temp";
+  
+  open(TEMP, ">$temp_f") or die "Couldn't open file $temp_f";
+  open(FILE, "<$file") or die "Couldn't open file $file";
+	
+
+	# print the lines before the change
+	while( my $line = <FILE> ) {
+ 	#Print the input string in the new file
+	print TEMP $line;
+	#Remove the newline for the check
+	chop($line);
+    last if $line eq $start; # chosen string to find found
+   }
+	#Print the input string in the new file
+	print TEMP $string_to_ins;
+
+	
+	# jump all that is between start and end
+	while( my $line = <FILE> )  {
+	chop($line);
+     last if $line eq $end; # chosen string to find found
+   }
+   
+   #Now print the end and the rest of the file
+   print TEMP $end."\n";
+   	while( my $line = <FILE> )  {
+	print TEMP $line;
+   }
+   
+  close(TEMP);  
+  close(FILE);
+  
+  #Overwrite input file
+  move($temp_f,$file) or print "ERROR: unable to move $temp_f into $file\n";
+	#Remove the temp file
+	delete_file($temp_f);
+}
+
 
 =head2 parse_command_line_args
 
@@ -720,7 +689,7 @@ sub parse_command_line_args{
 			"nc|nochr" => \$nochr, 
 			"g|genomefile=s" => \$genomefile,
 			"s|samtools=s" => \$samtools_path
-           );
+	          );
            
            #Print a little help
   if ( $HELP ){
