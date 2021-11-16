@@ -10,6 +10,13 @@ Installation is not required, but you need some dependencies...
 
 **Installation with Singularity**
 
+IMPORTANT NOTICE --->> As of Nov-16,2021 we are experiencing problems in the upload of the VarGenius-HZD container in GitHub as its size is greater than the allowed size. In the meanwhile we provide VarGenius-HZD/LIB/SOFTWARE/VarGenius-HZD_container.def file for the users. 
+You should build and save the .sif file with identical name within the same folder with a command such as:
+
+```
+singularity build VarGenius-HZD_container.sif VarGenius-HZD_container.def
+```
+
 - Download entire folder of VarGenius-HZD from this repository
 - Install singularity and PERL
 - Create a directory to work in
@@ -20,8 +27,7 @@ perl install.pl
 
 - When asked provide 
 	- 1. your work directory (e.g. /path/to/hzd_analyses).
-	- 2. the path of the BAM files 
-	- 3. the folder of the reference genome
+	- 2. the path to the reference genome
 
 VarGenius-HZD automatically detects your singularity installation and sets the paths to samtools, bedtools and R.
 If you won't plan to install singularity then you have to manually install them.
