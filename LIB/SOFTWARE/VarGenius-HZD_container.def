@@ -1,0 +1,34 @@
+Bootstrap: docker
+From: ubuntu:20.04
+
+%environment
+    export PATH="/usr/local/bin:$PATH"
+    export PATH="/opt/bin:$PATH"
+    export LD_LIBRARY_PATH="/opt/lib:$LD_LIBRARY_PATH"
+    
+%post
+export DEBIAN_FRONTEND=noninteractive
+
+
+#Creating a directory for the software
+mkdir -p /vargenius_sw
+bin_dir="/vargenius_sw"
+cd $bin_dir
+ls
+
+# update & upgrade #
+apt-get -y update
+apt-get -y upgrade
+apt-get -y install \
+                        git wget \
+            tar zip gzip \
+            autoconf automake binutils \
+            gcc libz-dev\
+            libtool make cmake patch pkg-config
+
+#R
+echo "INSTALLING R"
+apt-get -y install r-base
+
+apt-get install -y samtools
+apt-get install -y bedtools
