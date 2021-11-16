@@ -1,0 +1,2 @@
+VarGeniusVer;reference_f;R_path;samtools_path;bedtools_path;genome_file;data_folder;lib_folder;config_folder;log_folder;repository_folder;perl_libs_paths_f;folders_file;vg_pl_scripts_2_update;vargenius_sing_cont;min_BoC_HDs;analtype
+
