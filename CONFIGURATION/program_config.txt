@@ -1,0 +1,39 @@
+###############################
+VarGeniusVer = 1.0
+
+*******GROUP 1: START
+#DATABASE configuration
+
+#Reference genome folder
+reference_f = /Users/frank/Desktop/hzd_analyses/
+
+##PROGRAM PATHS
+R_path = R
+samtools_path = samtools
+bedtools_path = bedtools
+genome_file = 
+*******GROUP 1: END
+
+data_folder = DATA
+lib_folder = LIB
+config_folder = CONFIGURATION
+log_folder = LOG
+repository_folder = REPOSITORY
+
+
+perl_libs_paths_f = perl_libs_paths.txt
+folders_file = folders.txt
+vg_pl_scripts_2_update = HZD_launch.pl,get_nc_exons.pl
+
+
+vargenius_sing_cont = VarGenius-HZD_container.sif
+
+#Minimum Breadth-of-coverage to filter homozygous deletions
+min_BoC_HDs = 0.2
+
+#The analysis type can be for single sample or with parents
+#When parents are used the sample names must contain a family id and the following
+#naming convention: _P is the proband; _F for the father; _M for the Mother
+#e.g. FamilyA_P; FamilyA_F; FamilyA_M
+#To do this, please use: analtype = family
+analtype = single
