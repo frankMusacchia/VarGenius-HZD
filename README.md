@@ -1,6 +1,6 @@
 # VarGenius-HZD
 
-Rare homozygous/hemizygous deletions caller within a set of BAM files
+Rare homozygous/hemizygous deletions caller giving in input a dataset of BAM files
 
 ----------------------------------------
 
@@ -38,7 +38,7 @@ If you won't plan to install singularity then you have to manually install them.
 
 - the reference genome in FASTA format that you used for the alignment
 - the genome file for your genome. It is generated automatically, otherwise see FAQs. 
-- the target BED file for your sequenced samples
+- the target BED file for your sequenced samples (same enrichment kit MUST be used!)
 - a file with a list of sample names and paths to the BAM files tab separated (bamlist.txt). 
   E.g.:
 
