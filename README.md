@@ -8,7 +8,7 @@ Please, clone or download the entire folder of VarGenius-HZD from this repositor
 Installation is not required, but you need some dependencies...
 
 
-**Installation with Singularity**
+#Installation with Singularity
 
 IMPORTANT NOTICE --->> As of Nov-16,2021 we are experiencing problems in the upload of the VarGenius-HZD container in GitHub as its size is greater than the allowed size. In the meanwhile we provide VarGenius-HZD/LIB/SOFTWARE/VarGenius-HZD_container.def file for the users. 
 You should build and save the .sif file with identical name within the same folder with a command such as:
