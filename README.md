@@ -84,6 +84,11 @@ perl /path/to/VarGenius-HZD/HZD_launch.pl -f DETECT\_HDs -l /path/to/bamlist.txt
 
 **OUTPUT Description**
 
+*VarGenius-HZD* first computes Breadth- and Depth-of-Coverage (BoC and DoC) independently for all samples provided in input (you are constrained to use all samples with same target).
+Using BoC defines a first tier of likely homozygous deletions. Then these are filtered from artifacts and assessed as rare by checking if they are present in other samples.
+The third level of filtering is performed by the user leveraging the average DoC along with DoC for sample/parents. We usually filter out HDs were the average/parent coverage is 
+less than 30 reads. A visual validation through IGV is strongly suggested to avoid unfiltered artifacts.
+
 *VarGenius-HZD* outputs a TAB separated file with the following fields:
 
 compid: an identifier of the HD
