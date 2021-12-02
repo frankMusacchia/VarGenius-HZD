@@ -34,7 +34,12 @@ If you won't plan to install singularity then you have to manually install them.
 
 
 
-**Input to prepare**
+**TUTORIAL**
+
+
+After the installation you are ready to run VarGenius-HZD using your own samples generated with the same enrichment kit.
+ and the following input files:
+
 
 - the reference genome in FASTA format that you used for the alignment
 - the genome file for your genome. It is generated automatically, otherwise see FAQs. 
@@ -89,6 +94,7 @@ Using BoC defines a first tier of likely homozygous deletions. Then these are fi
 The third level of filtering is performed by the user leveraging the average DoC along with DoC for sample/parents. We usually filter out HDs were the average/parent coverage is 
 less than 30 reads. A visual validation through IGV is strongly suggested to avoid unfiltered artifacts.
 
+
 *VarGenius-HZD* outputs a TAB separated file with the following fields:
 
 compid: an identifier of the HD
@@ -113,6 +119,9 @@ gene: UCSC gene symbol
 
 
 **TEST WITH SYNTHETIC HDs in 1KGP DATA**
+
+With this VarGenius-HZD test we would like to conduct the users across the same evaluation performed within our manuscript to compare the performances of 
+our tool with existing state-of-art tools. This is not intended to be a Tutorial.
 
 This is the test that we conducted on 1KGP data to detect synthetic deletions using *VarGenius-HZD*. 
 It requires the use of bedtools and samtools.
@@ -174,9 +183,9 @@ singularity run VarGenius-HZD/LIB/SOFTWARE/VarGenius-HZD_container.sif bedtools
 	
 
 
-Frequently Asked Questions
+**Frequently Asked Questions**
 
-**Issues with the genome file for bedtools*
+*Issues with the genome file for bedtools*
 
 Please read carefully here. 
 VarGenius-HZD uses bedtools coverage with the -sorted option to accelerate the process. This assumes that the records are sorted lexicographically (e.g., chr1, chr10, etc.). bedtools requires the genome file that must be produced using the exact reference genome file that was used for the alignment (http://bedtools.readthedocs.org/en/latest/content/tools/intersect.html#g-define-an-alternate-chromosome-sort-order-via-a-genome-file).
@@ -198,7 +207,7 @@ For example 1KGP samples are sorted "numerically" (e.g., 1, 2, etc.).  If so, yo
 	
 
 
-**Issues with naming convention in bedtools**
+*Issues with naming convention in bedtools*
 
 If you get an error like the followiing:
 
